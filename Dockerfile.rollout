@@ -1,0 +1,10 @@
+FROM quay.io/redhat-services-prod/openshift/boilerplate:image-v7.3.0 AS builder
+
+
+COPY deploy.sh sss.yaml /
+
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+
+RUN chmod +x /deploy.sh &&  chmod +x /kubectl
+
+CMD ["/deploy.sh"]
