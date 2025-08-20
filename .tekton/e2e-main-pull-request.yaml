@@ -1,0 +1,55 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/openshift/osd-example-operator?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: |
+      event == "pull_request" &&
+      target_branch == "konflux-builds" &&
+      (
+        ".tekton/e2e-main-pull-request.yaml".pathChanged() ||
+        "osde2e/Dockerfile".pathChanged() ||
+        "***/*.go".pathChanged() ||
+        "***/go.*".pathChanged()
+      )
+  creationTimestamp: null
+  labels:
+    appstudio.openshift.io/application: osd-example-operator-main
+    appstudio.openshift.io/component: e2e-main
+    pipelines.appstudio.openshift.io/type: build
+  name: e2e-main-on-pull-request
+  namespace: oeo-cicada-tenant
+spec:
+  params:
+  - name: git-url
+    value: '{{source_url}}'
+  - name: revision
+    value: '{{revision}}'
+  - name: output-image
+    value: quay.io/redhat-user-workloads/oeo-cicada-tenant/osd-example-operator-main/osd-example-operator-main/e2e:on-pr-{{revision}}
+  - name: image-expires-after
+    value: 5d
+  - name: dockerfile
+    value: osde2e/Dockerfile
+  - name: path-context
+    value: .
+  pipelineRef:
+    resolver: bundles
+    params:
+    - name: name
+      value: docker-build-oci-ta
+    - name: bundle
+      value: quay.io/konflux-ci/tekton-catalog/pipeline-docker-build-oci-ta@sha256:c2fdfde5f31286be89972528481957dd49c1a31c59b804da2c8abfe21e745674
+    - name: kind
+      value: pipeline
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-e2e-main
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'
+status: {}
